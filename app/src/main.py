@@ -1,12 +1,8 @@
 import streamlit as st
-from vosk import Model, KaldiRecognizer, SetLogLevel
+from vosk import Model, KaldiRecognizer
 import waveCob.cutCob as cb
-from waveCob.voiceWave import AudioContorol
 from pydub import AudioSegment
 import pandas as pd
-from moviepy.video.io.VideoFileClip import VideoFileClip, AudioFileClip
-from moviepy.video.compositing.concatenate import concatenate_videoclips
-from moviepy.audio.fx.audio_fadeout import audio_fadeout
 import subprocess
 import os
 import wave
@@ -30,16 +26,7 @@ def start_exec(ngword:list, soundEfect:str="../sounds/beep.wav",select_lang="日
         print ("Please download the model from https://alphacephei.com/vosk/models and unpack as 'model' in the current folder.")
         exit (1)
 
-
-    # w = AudioContorol(AUDIO,seconds=RECODETIME)
-    # st.write("record start")
-    # w.record() #レコード終了
-    # st.write("record finish")
-
     wf = wave.open(AUDIO, "rb")
-    # if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE":
-    #     print ("Audio file must be WAV format mono PCM.")
-    #     exit (1)
 
     model = Model(selected_model)
     rec = KaldiRecognizer(model, wf.getframerate())
@@ -51,12 +38,10 @@ def start_exec(ngword:list, soundEfect:str="../sounds/beep.wav",select_lang="日
     while True:
         data = wf.readframes(4000)
         if len(data) <= 0:
-            # print(json.loads(rec.Result()))
             break
         if rec.AcceptWaveform(data):
             output = rec.Result()
             json_dict = json.loads(output)
-
             try:
                 for word in json_dict['result']:
                     
@@ -84,7 +69,6 @@ def start_exec(ngword:list, soundEfect:str="../sounds/beep.wav",select_lang="日
 
     print(json.loads(rec.FinalResult())['text'])
 
-
 def save_wav(upload:st.file_uploader) -> None:
     with open("../include/tempInputVoice.wav", "wb") as f:
         f.write(upload.read())
@@ -96,13 +80,6 @@ def save_wav(upload:st.file_uploader) -> None:
 
     subprocess.call(command, shell=True)
 
-
-# def save_mp3_to_wav(upload:st.file_uploader) -> None:
-#     with open("../include/temp_mp3_data.mp3", "wb") as f:
-#         f.write(upload.read())
-#     audio = cb.AudioSegment.from_mp3("../include/temp_mp3_data.mp3")
-#     audio.export("../include/inputVoice.wav",format="wav")
-    
 def save_mp4_to_cut_wav(upload:st.file_uploader) -> None:
     bar = st.progress(0)
     # mp4ファイルのパス
@@ -110,12 +87,11 @@ def save_mp4_to_cut_wav(upload:st.file_uploader) -> None:
     video_output = "../include/video_no_audio.mp4"
     audio_output = "../include/inputVoice.wav"
 
-    #mp4を一旦保存
+    # mp4を一旦保存
     with open(video_file, "wb") as f:
         f.write(upload.read())
     bar.progress(20)
 
-    
     # MP4から音声を抽出
     audio_extract_command = f"ffmpeg  -y -i {video_file} -ar 16000 -ac 1 -acodec pcm_s16le -y {audio_output}"
     subprocess.call(audio_extract_command, shell=True)
@@ -124,8 +100,6 @@ def save_mp4_to_cut_wav(upload:st.file_uploader) -> None:
     video_extract_command = f"ffmpeg -y -i {video_file} -c:v libx264 -preset slow -crf 22 -c:a copy {video_output}"
     subprocess.call(video_extract_command, shell=True)
 
-
-    
     bar.progress(60)
     
     bar.progress(80)
@@ -134,14 +108,12 @@ def save_mp4_to_cut_wav(upload:st.file_uploader) -> None:
 
 #音声なし動画とフィルタリング音声を合成
 def chain_mp4_wave():
-    #問題あり
     video_file = "../include/video_no_audio.mp4"
     audio_file = "../output/output.wav"
     output_file = "../output/output.mp4"
     # 動画と音声を合成
     merge_command = f"ffmpeg -y -i {video_file} -i {audio_file} -c:v copy -c:a aac -strict experimental -map 0:v:0 -map 1:a:0 {output_file}"
     subprocess.call(merge_command, shell=True)
-
 
 
 def main():
@@ -151,9 +123,9 @@ def main():
     st.write("""本アプリケーションは、圧倒的なコンプライアンス抵触を防ぐ効果があります。
                 コンプライアンスチェック及び、再生ファイル内で抽出される音声にbeep音による加工を施すことができます。
              """)
-    
     """"""
-    #宣言
+
+    # 宣言
     if 'upload_data' not in st.session_state:
         st.session_state['upload_data'] = None
     if 'upload' not in st.session_state:
@@ -255,11 +227,6 @@ def main():
             if st.session_state.extension == '.wav':
                 save_wav(st.session_state.upload_data)
 
-            #mp3 wavに変換後に上と同じ操作を実行
-            # elif extension == '.mp3':
-            #     save_mp3_to_wav(upload_data)
-            #mp4 動画と音声に分けた後にそれぞれを指定のフォルダに格納
-
             elif st.session_state.extension == '.mp4':
                 save_mp4_to_cut_wav(st.session_state.upload_data)
             else:
@@ -267,8 +234,6 @@ def main():
             st.experimental_rerun()
         
         ngdefault = None
-        # if st.button("全選択",help="次のセレクトボックスを全選択します。"):
-        #     ngdefault = NG_list
         select_model = "日本語" #st.selectbox("言語選択",["日本語","English"],index=0)
         ngword = st.multiselect(
         '遮断する言葉を選んでください', NG_list,default=ngdefault
